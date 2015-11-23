@@ -1,8 +1,6 @@
 __author__ = 'christopher'
 from ase.io.trajectory import PickleTrajectory
 
-from pyiid.sim.nuts_hmc import nuts
-
 from simdb.search import *
 from simdb.insert import *
 from simdb.handlers import FileLocation
@@ -12,13 +10,8 @@ import filestore.commands as fsc
 
 
 def run_simulation(sim):
-    # Load info from simulation request
-    sim_params, = find_simulation_parameter_document(_id=sim.params.id)
-
     # TODO: Throw in some statments about timeouts, acceptable U(q), etc.
-    iterations = sim_params.iterations
-    target_acceptance = sim_params.target_acceptance
-    ensemble_temp = sim_params.temperature
+    iterations = sim.iterations[-1]
 
     # Load Starting Atoms
     starting_atoms_entry, = find_atomic_config_document(_id=sim.starting_atoms.id)
@@ -27,7 +20,6 @@ def run_simulation(sim):
         traj_entry, = find_atomic_config_document(_id=sim.starting_atoms.id)
         traj = traj_entry.file_payload
     except:
-        traj_entry = None
         traj = None
 
     # We want to continue this simulation
@@ -52,31 +44,28 @@ def run_simulation(sim):
         wtraj = PickleTrajectory(new_file_location, 'w')
         sim.simulation_atoms = new_atoms_entry
         sim.save()
-
+    else:
+        raise NotImplementedError
     # Create Calculators
     pes, = find_pes_document(_id=sim.pes.id)
     master_calc = pes.payload
 
-    # Attach MulitCalc to atoms
+    # Attach PES to atoms
     atoms.set_calculator(master_calc)
 
     sim.start_total_energy.append(atoms.get_total_energy())
     sim.start_potential_energy.append(atoms.get_potential_energy())
     sim.start_kinetic_energy.append(atoms.get_kinetic_energy())
     sim.start_time.append(ttime.time())
+    dyn = find_ensemble_document(atoms, _id=sim.ensemble.id)
     sim.ran = True
     sim.save()
 
     # Simulate
-    # TODO: eventually support different simulation engines
-    out_traj, samples, l_p_i, seed = nuts(atoms, target_acceptance, iterations,
-                                    ensemble_temp, wtraj)
+    out_traj, metadata = dyn.run(iterations)
     sim.end_time.append(ttime.time())
-    sim.total_iterations.append(sim.params.iterations)
-    sim.total_samples.append(samples)
-    sim.leapfrog_per_iter.append(l_p_i)
     sim.finished = True
-    sim.seed.append(seed)
+    sim.metadata.append(metadata)
     sim.save()
     # Write info to DB
     sim.final_potential_energy.append(out_traj[-1].get_potential_energy())
