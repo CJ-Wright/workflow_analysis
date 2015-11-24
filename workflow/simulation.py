@@ -1,4 +1,3 @@
-__author__ = 'christopher'
 from ase.io.trajectory import PickleTrajectory
 
 from simdb.search import *
@@ -7,6 +6,8 @@ from simdb.handlers import FileLocation
 
 from filestore.retrieve import handler_context
 import filestore.commands as fsc
+from time import time as ttime
+__author__ = 'christopher'
 
 
 def run_simulation(sim):
