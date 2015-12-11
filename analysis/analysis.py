@@ -26,12 +26,9 @@ plt.ion()
 colors = ['grey', 'red', 'royalblue']
 
 
-def plot_pdf(scatter, gobs, atoms, save_file=None, show=True, **kwargs):
+def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    gcalc = scatter.get_pdf(atoms)
-    r = scatter.get_r()
 
     rw, scale = wrap_rw(gcalc, gobs)
     print 'Rw', rw * 100, '%'
@@ -56,14 +53,12 @@ def plot_pdf(scatter, gobs, atoms, save_file=None, show=True, **kwargs):
     return
 
 
-def plot_waterfall_pdf(scatter, gobs, traj, save_file=None, show=True,
+def plot_waterfall_pdf(r, gcalcs, gobs, save_file=None, show=True,
                        **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    r = scatter.get_r()
     # ax.plot(r, gobs, 'bo', label="G(r) data")
-    for i, atoms in enumerate(traj):
-        gcalc = scatter.get_pdf(atoms)
+    for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
         print i, 'Rw', rw * 100, '%'
         plt.plot(r, gcalc * scale + i, '-', label="Fit {}".format(i))
@@ -80,14 +75,11 @@ def plot_waterfall_pdf(scatter, gobs, traj, save_file=None, show=True,
     return
 
 
-def plot_waterfall_diff_pdf(scatter, gobs, traj, save_file=None, show=True,
+def plot_waterfall_diff_pdf(r, gcalcs, gobs, save_file=None, show=True,
                             **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    r = scatter.get_r()
-    # ax.plot(r, gobs, 'bo', label="G(r) data")
-    for i, atoms in enumerate(traj):
-        gcalc = scatter.get_pdf(atoms)
+    for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
         print i, 'Rw', rw * 100, '%'
         plt.plot(r, gobs - (gcalc * scale)
@@ -106,20 +98,18 @@ def plot_waterfall_diff_pdf(scatter, gobs, traj, save_file=None, show=True,
     return
 
 
-def plot_waterfall_pdf_2d(scatter, gobs, traj, save_file=None, show=True,
+def plot_waterfall_pdf_2d(r, gcalcs, gobs, save_file=None, show=True,
                           **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    r = scatter.get_r()
     # ax.plot(r, gobs, 'bo', label="G(r) data")
-    gcalcs = []
-    for i, atoms in enumerate(traj):
-        gcalc = scatter.get_pdf(atoms)
+    gcalcs_img = []
+    for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
         print i, 'Rw', rw * 100, '%'
         gcalcs.append(gcalc * scale)
-    ax.imshow(gcalcs, aspect='auto', origin='lower',
-              extent=(r.min(), r.max(), 0, len(traj)))
+    ax.imshow(gcalcs_img, aspect='auto', origin='lower',
+              extent=(r.min(), r.max(), 0, len(gcalcs_img)))
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel("iteration")
     ax.legend(loc='best', prop={'size': 12})
@@ -133,20 +123,18 @@ def plot_waterfall_pdf_2d(scatter, gobs, traj, save_file=None, show=True,
     return
 
 
-def plot_waterfall_diff_pdf_2d(scatter, gobs, traj, save_file=None, show=True,
+def plot_waterfall_diff_pdf_2d(r, gcalcs, gobs, save_file=None, show=True,
                                **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    r = scatter.get_r()
     # ax.plot(r, gobs, 'bo', label="G(r) data")
-    gcalcs = []
-    for i, atoms in enumerate(traj):
-        gcalc = scatter.get_pdf(atoms)
+    gcalcs_img = []
+    for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
         print i, 'Rw', rw * 100, '%'
         gcalcs.append(gobs - gcalc * scale)
-    ax.imshow(gcalcs, aspect='auto', origin='lower',
-              extent=(r.min(), r.max(), 0, len(traj)))
+    ax.imshow(gcalcs_img, aspect='auto', origin='lower',
+              extent=(r.min(), r.max(), 0, len(gcalcs_img)))
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel("iteration")
     ax.legend(loc='best', prop={'size': 12})
@@ -160,17 +148,16 @@ def plot_waterfall_diff_pdf_2d(scatter, gobs, traj, save_file=None, show=True,
     return
 
 
-def plot_angle(cut, traj, target_configuration=None, save_file=None, show=True,
-               index=-1,
+def plot_angle(cut, start, finish, target=None, save_file=None, show=True,
                **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
-    if target_configuration is not None:
-        stru_l['Target'] = target_configuration
-    stru_l['Start'] = traj[0]
-    stru_l['Finish'] = traj[index]
+    if target is not None:
+        stru_l['Target'] = target
+    stru_l['Start'] = start
+    stru_l['Finish'] = finish
     for atoms in stru_l.values():
         if len(set(atoms.get_tags())) == 1:
             tag_surface_atoms(atoms)
@@ -414,10 +401,6 @@ def plot_bonds(sim, cut, save_file=None, show=True, index=-1):
                     transparent='True')
     if show is True:
         plt.show()
-
-
-def ase_view(traj, **kwargs):
-    view(traj)
 
 
 def plot_average_coordination(cut, traj, target_configuration=None,
