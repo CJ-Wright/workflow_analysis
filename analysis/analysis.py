@@ -1,4 +1,4 @@
-__author__ = 'christopher'
+from __future__ import print_function
 import os
 from inspect import isgenerator
 from copy import deepcopy as dc
@@ -17,6 +17,8 @@ from pyiid.utils import tag_surface_atoms, get_angle_list, \
 from simdb.search import *
 from pyiid.kernels.cpu_nxn import get_d_array, get_r_array
 
+__author__ = 'christopher'
+
 font = {'family': 'normal',
         # 'weight' : 'bold',
         'size': 18}
@@ -31,7 +33,7 @@ def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
     ax = fig.add_subplot(111)
 
     rw, scale = wrap_rw(gcalc, gobs)
-    print 'Rw', rw * 100, '%'
+    print('Rw', rw * 100, '%')
 
     baseline = -1 * np.abs(1.5 * gobs.min())
     gdiff = gobs - gcalc * scale
@@ -39,10 +41,10 @@ def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
     ax.plot(r, gobs, 'bo', label="G(r) data")
     ax.plot(r, gcalc * scale, 'r-', label="G(r) fit")
     ax.plot(r, gdiff + baseline, 'g-', label="G(r) diff")
-    ax.plot(r, np.zeros_like(r) + baseline, 'k:')
+    ax.axhline(y=baseline, color='k', linestyle=':')
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel(r"$G (\AA^{-2})$")
-    plt.legend(loc='best', prop={'size': 12})
+    plt.legend(loc='best', prop={'size': 12}, fancybox=True, framealpha=0.3)
     if save_file is not None:
         plt.savefig(save_file + '_pdf.eps', bbox_inches='tight',
                     transparent='True')
@@ -60,7 +62,7 @@ def plot_waterfall_pdf(r, gcalcs, gobs, save_file=None, show=True,
     # ax.plot(r, gobs, 'bo', label="G(r) data")
     for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
-        print i, 'Rw', rw * 100, '%'
+        print(i, 'Rw', rw * 100, '%')
         plt.plot(r, gcalc * scale + i, '-', label="Fit {}".format(i))
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel(r"$G (\AA^{-2})$")
@@ -81,7 +83,7 @@ def plot_waterfall_diff_pdf(r, gcalcs, gobs, save_file=None, show=True,
     ax = fig.add_subplot(111)
     for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
-        print i, 'Rw', rw * 100, '%'
+        print(i, 'Rw', rw * 100, '%')
         plt.plot(r, gobs - (gcalc * scale)
                  # - i
                  , '-', label="Fit {}".format(i))
@@ -106,7 +108,7 @@ def plot_waterfall_pdf_2d(r, gcalcs, gobs, save_file=None, show=True,
     gcalcs_img = []
     for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
-        print i, 'Rw', rw * 100, '%'
+        print(i, 'Rw', rw * 100, '%')
         gcalcs.append(gcalc * scale)
     ax.imshow(gcalcs_img, aspect='auto', origin='lower',
               extent=(r.min(), r.max(), 0, len(gcalcs_img)))
@@ -131,7 +133,7 @@ def plot_waterfall_diff_pdf_2d(r, gcalcs, gobs, save_file=None, show=True,
     gcalcs_img = []
     for i, gcalc in enumerate(gcalcs):
         rw, scale = wrap_rw(gcalc, gobs)
-        print i, 'Rw', rw * 100, '%'
+        print(i, 'Rw', rw * 100, '%')
         gcalcs.append(gobs - gcalc * scale)
     ax.imshow(gcalcs_img, aspect='auto', origin='lower',
               extent=(r.min(), r.max(), 0, len(gcalcs_img)))
@@ -153,6 +155,7 @@ def plot_angle(cut, start, finish, target=None, save_file=None, show=True,
     fig = plt.figure()
     ax = fig.add_subplot(111)
     stru_l = {}
+
     # If the PDF document created with atomic config, use that as target
     if target is not None:
         stru_l['Target'] = target
@@ -209,14 +212,14 @@ def plot_angle(cut, start, finish, target=None, save_file=None, show=True,
         plt.show()
 
 
-def plot_coordination(cut, traj, target_configuration=None, save_file=None,
+def plot_coordination(cut, start, finish, target_configuration=None, save_file=None,
                       show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
     if target_configuration is not None:
         stru_l['Target'] = target_configuration
-    stru_l['Start'] = traj[0]
-    stru_l['Finish'] = traj[index]
+    stru_l['Start'] = start
+    stru_l['Finish'] = finish
     for atoms in stru_l.values():
         if len(set(atoms.get_tags())) == 1:
             tag_surface_atoms(atoms)
@@ -287,15 +290,15 @@ def plot_coordination(cut, traj, target_configuration=None, save_file=None,
     return
 
 
-def plot_radial_bond_length(cut, traj, target_configuration=None,
+def plot_radial_bond_length(cut, start, finish, target_configuration=None,
                             save_file=None,
                             show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
     if target_configuration is not None:
         stru_l['Target'] = target_configuration
-    stru_l['Start'] = traj[0]
-    stru_l['Finish'] = traj[index]
+    stru_l['Start'] = start
+    stru_l['Finish'] = finish
 
 
     # fig = plt.figure()
@@ -307,7 +310,7 @@ def plot_radial_bond_length(cut, traj, target_configuration=None,
     maxbond = 0.
     minbond = 10.
     for n, (key, ax) in enumerate(zip(stru_l.keys(), axes)):
-        print n, 1, len(stru_l.keys())
+        print(n, 1, len(stru_l.keys()))
         atoms = stru_l[key]
         com = atoms.get_center_of_mass()
         n_list = list(FullNeighborList(cut, atoms))
@@ -403,15 +406,15 @@ def plot_bonds(sim, cut, save_file=None, show=True, index=-1):
         plt.show()
 
 
-def plot_average_coordination(cut, traj, target_configuration=None,
+def plot_average_coordination(cut, start, finish, target_configuration=None,
                               save_file=None,
                               show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
     if target_configuration is not None:
         stru_l['Target'] = target_configuration
-    stru_l['Start'] = traj[0]
-    stru_l['Equilibrium'] = traj[index]
+    stru_l['Start'] = start
+    stru_l['Equilibrium'] = finish
     for atoms in stru_l.values():
         tag_surface_atoms(atoms)
 
@@ -514,7 +517,7 @@ def save_config(new_dir_path, name, d, index=-1, rotation_atoms=None):
         atoms2 = dc(atoms)
         atoms2.set_constraint()
         atoms2.translate(-1 * atoms2.get_center_of_mass())
-        print atoms2.positions
+        print(atoms2.positions)
         del atoms2[[atom.index for atom in atoms2 if atom.position[2] >= 0]]
         for e in file_endings:
             file_name = os.path.join(new_dir_path, name + '_half' + an + e)
@@ -532,8 +535,8 @@ def mass_plot(sims, cut, analysis_type='last'):
                 if atoms._calc is not None:
                     pel.append(atoms.get_potential_energy())
             index = np.argmin(pel)
-            print index
-            print pel[index]
+            print(index)
+            print(pel[index])
         elif analysis_type == 'last':
             index = -1
         ase_view(**d)
@@ -558,8 +561,8 @@ def mass_save(sims, cut, destination_dir, analysis_type='last'):
                 if atoms._calc is not None:
                     pel.append(atoms.get_potential_energy())
             index = int(np.argmin(pel))
-            print index
-            print pel[index]
+            print(index)
+            print(pel[index])
         elif analysis_type == 'last':
             index = -1
 
