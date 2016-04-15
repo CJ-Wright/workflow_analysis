@@ -24,8 +24,6 @@ def sim_unpack(sim):
 
 
 if __name__ == '__main__':
-    from analysis import *
-
     sim = find_simulation_document(name=unicode('C60 rattle->DFT 0.05')).next()
     sim_dict = sim_unpack(sim)
     print sim_dict['target_configuration']

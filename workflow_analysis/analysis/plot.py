@@ -24,7 +24,7 @@ font = {'family': 'normal',
         'size': 18}
 
 matplotlib.rc('font', **font)
-plt.ion()
+# plt.ion()
 colors = ['grey', 'red', 'royalblue']
 
 
@@ -52,7 +52,7 @@ def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
                     transparent='True')
     if show is True:
         plt.show()
-    return
+    # return
 
 
 def plot_waterfall_pdf(r, gcalcs, gobs, save_file=None, show=True,
