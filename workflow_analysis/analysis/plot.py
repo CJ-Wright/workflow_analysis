@@ -10,20 +10,22 @@ from ase.visualize import view
 import matplotlib
 from asap3.analysis.particle import FullNeighborList
 
-from pyiid.workflow import sim_unpack
+# from workflow.workflow import sim_unpack
 from pyiid.calc import wrap_rw
 from pyiid.utils import tag_surface_atoms, get_angle_list, \
     get_coord_list, get_bond_dist_list
-from simdb.search import *
+# from simdb.search import *
 from pyiid.kernels.cpu_nxn import get_d_array, get_r_array
+from matplotlib.patches import Rectangle
 
 __author__ = 'christopher'
 
 font = {'family': 'normal',
-        # 'weight' : 'bold',
+        # 'weight': 'bold',
         'size': 18}
 
 matplotlib.rc('font', **font)
+matplotlib.rc('figure', figsize=(8, 6), dpi=80 * 3)
 # plt.ion()
 colors = ['grey', 'red', 'royalblue']
 
@@ -35,24 +37,31 @@ def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
     rw, scale = wrap_rw(gcalc, gobs)
     print('Rw', rw * 100, '%')
 
-    baseline = -1 * np.abs(1.5 * gobs.min())
     gdiff = gobs - gcalc * scale
+    baseline = -1 * np.abs(1.5 * gobs.min())
+    if np.any(gobs - gdiff < 1):
+        baseline -= .5
 
-    ax.plot(r, gobs, 'bo', label="G(r) data")
-    ax.plot(r, gcalc * scale, 'r-', label="G(r) fit")
-    ax.plot(r, gdiff + baseline, 'g-', label="G(r) diff")
+    p0 = ax.plot(0, 0, '-', color='none', label=r"$Rw={}\%$".format(rw * 100.))
+    p1 = ax.plot(r, gobs, 'bo', label=r"$G(r)$ target")
+    p2 = ax.plot(r, gcalc * scale, 'r-', label=r"$G(r)$ fit")
+    p3 = ax.plot(r, gdiff + baseline, 'g-', label=r"$G(r)$ diff")
     ax.axhline(y=baseline, color='k', linestyle=':')
+    ax.set_ylim(np.min(gdiff + baseline) * 1.2, np.max(gcalc) * 1.05)
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel(r"$G (\AA^{-2})$")
-    plt.legend(loc='best', prop={'size': 12}, fancybox=True, framealpha=0.3)
+    plt.legend(loc='best', prop={'size': 18}, fancybox=True, framealpha=0.3)
+    plt.tight_layout()
     if save_file is not None:
         plt.savefig(save_file + '_pdf.eps', bbox_inches='tight',
                     transparent='True')
         plt.savefig(save_file + '_pdf.png', bbox_inches='tight',
                     transparent='True')
+        plt.savefig(save_file + '_pdf.pdf', bbox_inches='tight',
+                    transparent='True')
     if show is True:
         plt.show()
-    # return
+    return
 
 
 def plot_waterfall_pdf(r, gcalcs, gobs, save_file=None, show=True,
@@ -202,17 +211,84 @@ def plot_angle(cut, start, finish, target=None, save_file=None, show=True,
     ax.set_xlabel('Bond angle in Degrees')
     ax.set_xlim(0, 180)
     ax.set_ylabel('Angle Counts')
-    ax.legend(loc='best', prop={'size': 12})
+    ax.legend(loc='best', prop={'size': 18}, fancybox=True, framealpha=0.3)
     if save_file is not None:
         plt.savefig(save_file + '_angle.eps', bbox_inches='tight',
                     transparent='True')
         plt.savefig(save_file + '_angle.png', bbox_inches='tight',
                     transparent='True')
+        plt.savefig(save_file + '_angle.pdf', bbox_inches='tight',
+                    transparent='True')
     if show is True:
         plt.show()
 
 
-def plot_coordination(cut, start, finish, target_configuration=None, save_file=None,
+def plot_core_shell_angle(cut, start, finish, target=None, save_file=None,
+                          show=True, **kwargs):
+    fig, axes = plt.subplots(2, sharey=True)
+    stru_l = {}
+
+    # If the PDF document created with atomic config, use that as target
+    if target is not None:
+        stru_l['Target'] = target
+    stru_l['Start'] = start
+    stru_l['Finish'] = finish
+    for atoms in stru_l.values():
+        if len(set(atoms.get_tags())) == 1:
+            tag_surface_atoms(atoms)
+
+    symbols = set(stru_l['Start'].get_chemical_symbols())
+
+    tags = {'Core': (0, '+'), 'Surface': (1, '*')}
+    for tag in tags.keys():
+        tagged_atoms = stru_l['Start'][
+            [atom.index for atom in stru_l['Start'] if
+             atom.tag == tags[tag][0]]]
+        if len(tagged_atoms) == 0:
+            del tags[tag]
+    if len(tags) == 1:
+        tags = {'': (1, '*')}
+    # need to change this
+    bins = np.linspace(0, 180, 100)
+    # Bin the data
+    for n, key in enumerate(stru_l.keys()):
+        for symbol in symbols:
+            for ax, tag in zip(axes, tags.keys()):
+                a, b = np.histogram(
+                    get_angle_list(stru_l[key], cut, element=symbol,
+                                   tag=tags[tag][0]), bins=bins)
+                total = np.sum(a)
+                if len(symbols) > 1:
+                    ax.plot(
+                        b[:-1], a,
+                        # label='{0} {1} {2}, {3}'.format(key, symbol, tag, total),
+                        label='{0} {1}'.format(key, symbol),
+                        marker='o', color=colors[n])
+                else:
+                    ax.plot(
+                        b[:-1], a,
+                        # label='{0} {1} {2}, {3}'.format(key, symbol, tag, total),
+                        label='{0}'.format(key),
+                        marker='o', color=colors[n])
+    for i, ax in enumerate(axes):
+        if i == 1:
+            ax.set_xlabel('Bond angle in Degrees')
+        ax.set_xlim(0, 180)
+        ax.set_ylabel('Angle Counts')
+        ax.legend(loc='best', prop={'size': 18}, fancybox=True, framealpha=0.3)
+    if save_file is not None:
+        plt.savefig(save_file + '_angle.eps', bbox_inches='tight',
+                    transparent='True')
+        plt.savefig(save_file + '_angle.png', bbox_inches='tight',
+                    transparent='True')
+        plt.savefig(save_file + '_angle.pdf', bbox_inches='tight',
+                    transparent='True')
+    if show is True:
+        plt.show()
+
+
+def plot_coordination(cut, start, finish, target_configuration=None,
+                      save_file=None,
                       show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
@@ -279,12 +355,11 @@ def plot_coordination(cut, start, finish, target_configuration=None, save_file=N
     ax.set_ylabel('Atomic Counts')
     ax2 = plt.twinx()
     ax2.set_ylim(ax.get_ylim())
-    ax.legend(loc='best', prop={'size': 12})
+    ax.legend(loc='best', prop={'size': 18}, fancybox=True, framealpha=0.3)
     if save_file is not None:
-        plt.savefig(save_file + '_coord.eps', bbox_inches='tight',
-                    transparent='True')
-        plt.savefig(save_file + '_coord.png', bbox_inches='tight',
-                    transparent='True')
+        for ext in ['eps', 'png', 'pdf']:
+            plt.savefig(save_file + '_coord.' + ext, bbox_inches='tight',
+                        transparent='True')
     if show is True:
         plt.show()
     return
@@ -300,29 +375,26 @@ def plot_radial_bond_length(cut, start, finish, target_configuration=None,
     stru_l['Start'] = start
     stru_l['Finish'] = finish
 
-
-    # fig = plt.figure()
-    # axes = []
-    # for i, key in enumerate(stru_l.keys()):
-    #     axes.append(fig.add_subplot(len(stru_l.keys()), 1, i + 1))
+    # Make subplots for each structure
     fig, axes = plt.subplots(len(stru_l.keys()), sharey=True)
     maxdist = 0.
     maxbond = 0.
     minbond = 10.
+
+    # For each axis/structure pair
     for n, (key, ax) in enumerate(zip(stru_l.keys(), axes)):
-        print(n, 1, len(stru_l.keys()))
         atoms = stru_l[key]
         com = atoms.get_center_of_mass()
         n_list = list(FullNeighborList(cut, atoms))
         dist_from_center = []
         bond_lengths = []
         stat_dist = []
+        dist = np.sqrt(np.sum(((atoms.get_positions() - com) ** 2), axis=1))
         for i, coord in enumerate(n_list):
-            dist = np.sqrt(np.sum((atoms[i].position - com)) ** 2)
             stat_dist.append(dist)
             sub_bond_lengths = []
             for j in coord:
-                dist_from_center.append(dist)
+                dist_from_center.append(dist[i])
                 sub_bond_lengths.append(atoms.get_distance(i, j))
             bond_lengths.extend(sub_bond_lengths)
         ax.scatter(dist_from_center, bond_lengths, c=colors[n], marker='o',
@@ -334,11 +406,15 @@ def plot_radial_bond_length(cut, start, finish, target_configuration=None,
         if np.min(bond_lengths) < minbond:
             minbond = np.min(bond_lengths)
 
-        ax.legend(loc='best', prop={'size': 12})
+            # ax.legend(loc='best', prop={'size': 12})
 
     for i, ax in enumerate(axes):
         ax.set_xlim(-0.5, maxdist + .5)
         ax.set_ylim(minbond - .1, maxbond + .1)
+        plt.locator_params(axis='y', nbins=8)
+        ax2 = ax.twinx()
+        ax2.set_ylabel(stru_l.keys()[i])
+        ax2.set_yticks([])
         if i == 1:
             ax.set_ylabel('Bond Distance $(\AA)$')
     ax.set_xlabel('Distance from Center $(\AA)$')
@@ -583,32 +659,48 @@ def mass_save(sims, cut, destination_dir, analysis_type='last'):
 
 
 if __name__ == '__main__':
-    from simdb.search import *
+    from pyiid.experiments.elasticscatter import ElasticScatter
 
-    sims = list(find_simulation_document())
-    # sim = sims[20]
-    # d = sim_unpack(sim)
+    src = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/misc_figures'
+    dest = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/new_figures'
+    dirs = [os.path.join(src, f) for f in os.listdir(src) if
+            os.path.isdir(os.path.join(src, f))]
 
-    # atoms = d['target_configuration']
-    # n = len(atoms)
-    # q = atoms.positions
-    # d = np.zeros((n, n, 3), np.float32)
-    # r = np.zeros((n, n), np.float32)
-    # get_d_array(d, q)
-    # get_r_array(r, d)
-    # maxr = np.max(r)
-    # maxpos = np.argmax(r)
-    # maxpos = np.unravel_index(maxpos, r.shape)
-    # maxpos = (27, 28)
-    # print maxr, maxpos
-    # atoms.rotate(atoms[maxpos[0]].position - atoms[maxpos[1]].position, 'z')
-    # view(atoms)
-    dest = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/figures'
-    mass_save(sims[40], 3.5, dest, 'min')
-
-    # ase_view(**d)
-    # plot_radial_bond_length(3.5, **d)
-    # plot_coordination(3.2, **d)
-    # a, b = get_coord_list(d['traj'][50:], 1.45)
-    # plot_radial_bond_length(3.5, **d)
-    # mass_plot(sim, 3.5, 'min')
+    s = ElasticScatter({'rmax': 14})
+    cut = 3.5
+    for d in dirs:
+        print(d)
+        files = os.listdir(d)
+        file_names = []
+        for f_stem in ['start', 'target', 'min']:
+            for f in files:
+                if f.endswith(f_stem + '.xyz') and 'half' not in f:
+                    file_names.append(os.path.join(src, d, f))
+        if len(file_names) == 3:
+            base_fn = os.path.split(file_names[0])[-1]
+            s_base_fn = base_fn.split('_')[0]
+            base_name = os.path.join(dest, os.path.split(d)[-1], s_base_fn)
+            print(base_name)
+            structures = [aseio.read(f) for f in file_names]
+            start_structure, target_structure, min_structure = structures
+            plot_pdf(gobs=s.get_pdf(target_structure),
+                     gcalc=s.get_pdf(min_structure),
+                     r=s.get_r(),
+                     show=False,
+                     save_file=base_name
+                     )
+            plot_radial_bond_length(cut, start_structure, min_structure,
+                                    target_structure,
+                                    show=False,
+                                    save_file=base_name
+                                    )
+            plot_coordination(cut, start_structure, min_structure,
+                              target_structure,
+                              show=False,
+                              save_file=base_name
+                              )
+            plot_core_shell_angle(cut, start_structure, min_structure,
+                                  target_structure,
+                                  show=False,
+                                  save_file=base_name
+                                  )
