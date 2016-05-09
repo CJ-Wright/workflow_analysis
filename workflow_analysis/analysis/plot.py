@@ -28,6 +28,7 @@ matplotlib.rc('font', **font)
 matplotlib.rc('figure', figsize=(8, 6), dpi=80 * 3)
 # plt.ion()
 colors = ['grey', 'red', 'royalblue']
+light_colors = ['silver', 'mistyrose', 'powderblue']
 
 
 def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
@@ -335,17 +336,23 @@ def plot_coordination(cut, start, finish, target_configuration=None,
         bottoms = np.zeros(bins.shape)
         j = 0
         for symbol in symbols:
-            for tag in tags.keys():
+            for tag, use_colors in zip(tags.keys(), [colors, light_colors]):
                 hatch = patterns[j]
                 coord = get_coord_list(stru_l[key], cut, element=symbol,
                                        tag=tags[tag][0])
                 a, b = np.histogram(coord, bins=bins)
                 total = np.sum(a)
-                ax.bar(b[:-1] + n * offset, a, width, bottom=bottoms[:-1],
-                       color=colors[n],
-                       label='{0} {1} {2}, {3}'.format(key, symbol, tag,
-                                                       total),
-                       hatch=hatch)
+                if len(symbols) > 1:
+                    ax.bar(b[:-1] + n * offset, a, width, bottom=bottoms[:-1],
+                           color=use_colors[n],
+                           label='{0} {1} {2}, {3}'.format(key, symbol, tag,
+                                                           total),
+                           )
+                else:
+                    ax.bar(b[:-1] + n * offset, a, width, bottom=bottoms[:-1],
+                           color=use_colors[n],
+                           label='{} {}, {}'.format(key, tag, total),
+                           )
                 j += 1
                 bottoms[:-1] += a
 
@@ -388,15 +395,13 @@ def plot_radial_bond_length(cut, start, finish, target_configuration=None,
         n_list = list(FullNeighborList(cut, atoms))
         dist_from_center = []
         bond_lengths = []
-        stat_dist = []
-        dist = np.sqrt(np.sum(((atoms.get_positions() - com) ** 2), axis=1))
-        for i, coord in enumerate(n_list):
-            stat_dist.append(dist)
-            sub_bond_lengths = []
-            for j in coord:
-                dist_from_center.append(dist[i])
-                sub_bond_lengths.append(atoms.get_distance(i, j))
-            bond_lengths.extend(sub_bond_lengths)
+        for i in range(len(atoms)):
+            for j in range(i+1, len(atoms)):
+                dist = atoms.get_distance(i, j)
+                if dist <= cut and dist != 0.0:
+                    ave_position = (atoms[i].position + atoms[j].position)/2.
+                    dist_from_center.append(np.sqrt(np.sum((ave_position - com)**2)))
+                    bond_lengths.append(atoms.get_distance(i, j))
         ax.scatter(dist_from_center, bond_lengths, c=colors[n], marker='o',
                    label='{0}'.format(key), s=40)
         if np.max(dist_from_center) > maxdist:
@@ -666,7 +671,7 @@ if __name__ == '__main__':
     dirs = [os.path.join(src, f) for f in os.listdir(src) if
             os.path.isdir(os.path.join(src, f))]
 
-    s = ElasticScatter({'rmax': 14})
+    s = ElasticScatter({'rmax': 16, 'rmin':1.5})
     cut = 3.5
     for d in dirs:
         print(d)
@@ -683,24 +688,33 @@ if __name__ == '__main__':
             print(base_name)
             structures = [aseio.read(f) for f in file_names]
             start_structure, target_structure, min_structure = structures
+
+            '''
             plot_pdf(gobs=s.get_pdf(target_structure),
                      gcalc=s.get_pdf(min_structure),
                      r=s.get_r(),
                      show=False,
-                     save_file=base_name
+                     # save_file=base_name
                      )
+            '''
+            # '''
             plot_radial_bond_length(cut, start_structure, min_structure,
                                     target_structure,
                                     show=False,
                                     save_file=base_name
                                     )
+            # '''
+            # '''
             plot_coordination(cut, start_structure, min_structure,
                               target_structure,
                               show=False,
                               save_file=base_name
                               )
+            # '''
+            '''
             plot_core_shell_angle(cut, start_structure, min_structure,
                                   target_structure,
-                                  show=False,
-                                  save_file=base_name
+                                  # show=False,
+                                  # save_file=base_name
                                   )
+            '''
