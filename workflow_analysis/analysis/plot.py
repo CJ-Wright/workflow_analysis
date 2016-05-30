@@ -8,13 +8,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ase.visualize import view
 import matplotlib
-from asap3.analysis.particle import FullNeighborList
 
 # from workflow.workflow import sim_unpack
 from pyiid.calc import wrap_rw
-from pyiid.utils import tag_surface_atoms, get_angle_list, \
-    get_coord_list, get_bond_dist_list
-# from simdb.search import *
+from pyiid.utils import (tag_surface_atoms,
+                         get_angle_list, get_coord_list, get_bond_dist_list
+    )
 from pyiid.kernels.cpu_nxn import get_d_array, get_r_array
 from matplotlib.patches import Rectangle
 
@@ -31,24 +30,30 @@ colors = ['grey', 'red', 'royalblue']
 light_colors = ['silver', 'mistyrose', 'powderblue']
 
 
-def plot_pdf(r, gcalc, gobs, save_file=None, show=True, **kwargs):
+def plot_pdf(r, gobs, gcalc=None, save_file=None, show=True, **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    rw, scale = wrap_rw(gcalc, gobs)
-    print('Rw', rw * 100, '%')
+    if gcalc is not None:
+        rw, scale = wrap_rw(gcalc, gobs)
+        print('Rw', rw * 100, '%')
 
-    gdiff = gobs - gcalc * scale
-    baseline = -1 * np.abs(1.5 * gobs.min())
-    if np.any(gobs - gdiff < 1):
-        baseline -= .5
+        gdiff = gobs - gcalc * scale
+        baseline = -1 * np.abs(1.5 * gobs.min())
+        if np.any(gobs - gdiff < 1):
+            baseline -= .5
 
-    p0 = ax.plot(0, 0, '-', color='none', label=r"$Rw={}\%$".format(rw * 100.))
-    p1 = ax.plot(r, gobs, 'bo', label=r"$G(r)$ target")
-    p2 = ax.plot(r, gcalc * scale, 'r-', label=r"$G(r)$ fit")
-    p3 = ax.plot(r, gdiff + baseline, 'g-', label=r"$G(r)$ diff")
-    ax.axhline(y=baseline, color='k', linestyle=':')
-    ax.set_ylim(np.min(gdiff + baseline) * 1.2, np.max(gcalc) * 1.05)
+    if gcalc is not None:
+        p0 = ax.plot(0, 0, '-', color='none', label=r"$Rw={}\%$".format(rw * 100.))
+        p1 = ax.plot(r, gobs, 'bo', label=r"$G(r)$ target")
+        p2 = ax.plot(r, gcalc * scale, 'r-', label=r"$G(r)$ fit")
+        p3 = ax.plot(r, gdiff + baseline, 'g-', label=r"$G(r)$ diff")
+        ax.axhline(y=baseline, color='k', linestyle=':')
+        ax.set_ylim(np.min(gdiff + baseline) * 1.2, np.max(gobs) * 1.5)
+        ax.set_xlim(np.min(r), np.max(r))
+    elif isinstance(gobs, list) and 'labels' in kwargs:
+        for g, l in zip(gobs, kwargs['labels']):
+            p1 = ax.plot(r, g, '-', label=l)
     ax.set_xlabel(r"$r (\AA)$")
     ax.set_ylabel(r"$G (\AA^{-2})$")
     plt.legend(loc='best', prop={'size': 18}, fancybox=True, framealpha=0.3)
@@ -288,13 +293,13 @@ def plot_core_shell_angle(cut, start, finish, target=None, save_file=None,
         plt.show()
 
 
-def plot_coordination(cut, start, finish, target_configuration=None,
+def plot_coordination(cut, start, finish, target=None,
                       save_file=None,
                       show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
-    if target_configuration is not None:
-        stru_l['Target'] = target_configuration
+    if target is not None:
+        stru_l['Target'] = target
     stru_l['Start'] = start
     stru_l['Finish'] = finish
     for atoms in stru_l.values():
@@ -372,13 +377,13 @@ def plot_coordination(cut, start, finish, target_configuration=None,
     return
 
 
-def plot_radial_bond_length(cut, start, finish, target_configuration=None,
+def plot_radial_bond_length(cut, start, finish, target=None,
                             save_file=None,
                             show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
-    if target_configuration is not None:
-        stru_l['Target'] = target_configuration
+    if target is not None:
+        stru_l['Target'] = target
     stru_l['Start'] = start
     stru_l['Finish'] = finish
 
@@ -392,7 +397,6 @@ def plot_radial_bond_length(cut, start, finish, target_configuration=None,
     for n, (key, ax) in enumerate(zip(stru_l.keys(), axes)):
         atoms = stru_l[key]
         com = atoms.get_center_of_mass()
-        n_list = list(FullNeighborList(cut, atoms))
         dist_from_center = []
         bond_lengths = []
         for i in range(len(atoms)):
@@ -487,13 +491,13 @@ def plot_bonds(sim, cut, save_file=None, show=True, index=-1):
         plt.show()
 
 
-def plot_average_coordination(cut, start, finish, target_configuration=None,
+def plot_average_coordination(cut, start, finish, target=None,
                               save_file=None,
                               show=True, index=-1, **kwargs):
     stru_l = {}
     # If the PDF document created with atomic config, use that as target
-    if target_configuration is not None:
-        stru_l['Target'] = target_configuration
+    if target is not None:
+        stru_l['Target'] = target
     stru_l['Start'] = start
     stru_l['Equilibrium'] = finish
     for atoms in stru_l.values():
@@ -564,103 +568,10 @@ def plot_average_coordination(cut, start, finish, target_configuration=None,
         plt.show()
     return
 
-
-def save_config(new_dir_path, name, d, index=-1, rotation_atoms=None):
-    if rotation_atoms is None:
-        atoms = d['traj'][index]
-        n = len(atoms)
-        q = atoms.positions
-        dist = np.zeros((n, n, 3), np.float32)
-        r = np.zeros((n, n), np.float32)
-        get_d_array(dist, q)
-        get_r_array(r, dist)
-        maxpos = np.argmax(r)
-        rotation_atoms = np.unravel_index(maxpos, r.shape)
-    out_l = [
-        d['traj'][index],
-        d['target_configuration'],
-        d['traj'][0]
-    ]
-    append_names = ['_min', '_target', '_start']
-    file_endings = ['.eps', '.png', '.xyz', '.pov']
-
-    for atoms, an in zip(out_l, append_names):
-        atoms.center()
-        # Rotate the config onto the viewing axis
-        atoms.rotate(atoms[rotation_atoms[0]].position - atoms[
-            rotation_atoms[1]].position, 'z')
-        atoms.center()
-        # save the total configuration
-        for e in file_endings:
-            file_name = os.path.join(new_dir_path, name + an + e)
-            aseio.write(file_name, atoms)
-        # cut the config in half along the xy plane
-        atoms2 = dc(atoms)
-        atoms2.set_constraint()
-        atoms2.translate(-1 * atoms2.get_center_of_mass())
-        print(atoms2.positions)
-        del atoms2[[atom.index for atom in atoms2 if atom.position[2] >= 0]]
-        for e in file_endings:
-            file_name = os.path.join(new_dir_path, name + '_half' + an + e)
-            aseio.write(file_name, atoms2)
+def plot_bond_structure(atoms, cut):
+    pass
 
 
-def mass_plot(sims, cut, analysis_type='last'):
-    if not isgenerator(sims) and not isinstance(sims, list):
-        sims = [sims]
-    for sim in sims:
-        d = sim_unpack(sim)
-        if analysis_type == 'min':
-            pel = []
-            for atoms in d['traj']:
-                if atoms._calc is not None:
-                    pel.append(atoms.get_potential_energy())
-            index = np.argmin(pel)
-            print(index)
-            print(pel[index])
-        elif analysis_type == 'last':
-            index = -1
-        ase_view(**d)
-        plot_pdf(atoms=d['traj'][index], **d)
-        plot_angle(cut, index=index, **d)
-        plot_coordination(cut, index=index, **d)
-        plot_radial_bond_length(cut, index=index, **d)
-
-
-def mass_save(sims, cut, destination_dir, analysis_type='last'):
-    if not isgenerator(sims) or not isinstance(sims, list):
-        sims = [sims]
-    for sim in sims:
-        name = str(sim.atoms.id)
-        new_dir_path = os.path.join(destination_dir, str(sim.name))
-        if not os.path.exists(new_dir_path):
-            os.mkdir(os.path.join(destination_dir, sim.name))
-        d = sim_unpack(sim)
-        if analysis_type == 'min':
-            pel = []
-            for atoms in d['traj']:
-                if atoms._calc is not None:
-                    pel.append(atoms.get_potential_energy())
-            index = int(np.argmin(pel))
-            print(index)
-            print(pel[index])
-        elif analysis_type == 'last':
-            index = -1
-
-        save_config(new_dir_path, name, d, index)
-        plot_pdf(atoms=d['traj'][index], show=False,
-                 save_file=os.path.join(new_dir_path, name), **d)
-
-        plot_angle(cut, show=False, save_file=os.path.join(new_dir_path, name),
-                   index=index, **d)
-
-        plot_coordination(cut, show=False,
-                          save_file=os.path.join(new_dir_path, name),
-                          index=index, **d)
-
-        plot_radial_bond_length(cut, show=False,
-                                save_file=os.path.join(new_dir_path, name),
-                                index=index, **d)
 
 
 if __name__ == '__main__':
