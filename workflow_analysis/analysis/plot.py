@@ -16,6 +16,7 @@ from pyiid.utils import (tag_surface_atoms,
     )
 from pyiid.kernels.cpu_nxn import get_d_array, get_r_array
 from matplotlib.patches import Rectangle
+from decimal import Decimal
 
 __author__ = 'christopher'
 
@@ -37,6 +38,8 @@ def plot_pdf(r, gobs, gcalc=None, save_file=None, show=True, **kwargs):
     if gcalc is not None:
         rw, scale = wrap_rw(gcalc, gobs)
         print('Rw', rw * 100, '%')
+        rw = float(Decimal(np.round(rw, 4)).quantize(Decimal('1.0000')))
+
 
         gdiff = gobs - gcalc * scale
         baseline = -1 * np.abs(1.5 * gobs.min())
@@ -577,7 +580,7 @@ def plot_bond_structure(atoms, cut):
 if __name__ == '__main__':
     from pyiid.experiments.elasticscatter import ElasticScatter
 
-    src = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/misc_figures'
+    src = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/oldversion.d/misc_figures'
     dest = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/new_figures'
     dirs = [os.path.join(src, f) for f in os.listdir(src) if
             os.path.isdir(os.path.join(src, f))]
@@ -600,26 +603,26 @@ if __name__ == '__main__':
             structures = [aseio.read(f) for f in file_names]
             start_structure, target_structure, min_structure = structures
 
-            '''
+            # '''
             plot_pdf(gobs=s.get_pdf(target_structure),
                      gcalc=s.get_pdf(min_structure),
                      r=s.get_r(),
                      show=False,
-                     # save_file=base_name
+                     save_file=base_name
                      )
-            '''
             # '''
+            '''
             plot_radial_bond_length(cut, start_structure, min_structure,
                                     target_structure,
-                                    show=False,
-                                    save_file=base_name
+                                    # show=False,
+                                    # save_file=base_name
                                     )
             # '''
-            # '''
+            '''
             plot_coordination(cut, start_structure, min_structure,
                               target_structure,
-                              show=False,
-                              save_file=base_name
+                              # show=False,
+                              # save_file=base_name
                               )
             # '''
             '''
