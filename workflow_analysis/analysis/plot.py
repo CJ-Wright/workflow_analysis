@@ -70,7 +70,10 @@ def plot_pdf(r, gobs, gcalc=None, save_file=None, show=True, **kwargs):
                     transparent='True')
     if show is True:
         plt.show()
-    return
+    if gcalc is not None:
+        return rw * 100
+    else:
+        return
 
 
 def plot_waterfall_pdf(r, gcalcs, gobs, save_file=None, show=True,
@@ -582,12 +585,20 @@ if __name__ == '__main__':
 
     src = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/oldversion.d/misc_figures'
     dest = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/new_figures'
-    dirs = [os.path.join(src, f) for f in os.listdir(src) if
-            os.path.isdir(os.path.join(src, f))]
-
-    s = ElasticScatter({'rmax': 16, 'rmin':1.5})
+    dn = [
+        'Au_55_DFT_HMC_paper_final',
+        'Au_55_DFT_amorphous_HMC_paper_final',
+        'Au_55_DFT_distorted_HMC_paper_final'
+    ]
+    exps = [
+        {'rmin':2.45, 'rmax':11.4},
+        {'rmin':1.95, 'rmax':12.18},
+        {'rmin':2.6, 'rmax':11.26}
+    ]
+    dirs = [os.path.join(src, f) for f in dn]
     cut = 3.5
-    for d in dirs:
+    for d,exp in zip(dirs, exps):
+        s = ElasticScatter({'rmax': 16, 'rmin': 1.5})
         print(d)
         files = os.listdir(d)
         file_names = []
@@ -610,6 +621,10 @@ if __name__ == '__main__':
                      show=False,
                      save_file=base_name
                      )
+            for f_stem, atoms in zip(['start', 'target', 'min'],
+            [start_structure, target_structure, min_structure]):
+                gr = np.vstack((s.get_r(), s.get_pdf(atoms)))
+                np.savetxt(base_name+'_'+f_stem+'.gr', gr.T)
             # '''
             '''
             plot_radial_bond_length(cut, start_structure, min_structure,
