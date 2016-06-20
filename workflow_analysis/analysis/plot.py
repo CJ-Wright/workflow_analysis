@@ -583,8 +583,11 @@ def plot_bond_structure(atoms, cut):
 if __name__ == '__main__':
     from pyiid.experiments.elasticscatter import ElasticScatter
 
-    src = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/oldversion.d/misc_figures'
-    dest = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/new_figures'
+    # src = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/oldversion.d/misc_figures'
+    # dest = '/mnt/bulk-data/Dropbox/BNL_Project/HMC_paper/new_figures'
+    plt.style.use('/mnt/bulk-data/Masters_Thesis/config/thesis.mplstyle')
+    src = '/mnt/bulk-data/Masters_Thesis/bmk/figures'
+    dest = '/mnt/bulk-data/Masters_Thesis/bmk/figures'
     dn = [
         'Au_55_DFT_HMC_paper_final',
         'Au_55_DFT_amorphous_HMC_paper_final',
@@ -626,24 +629,24 @@ if __name__ == '__main__':
                 gr = np.vstack((s.get_r(), s.get_pdf(atoms)))
                 np.savetxt(base_name+'_'+f_stem+'.gr', gr.T)
             # '''
-            '''
+            # '''
             plot_radial_bond_length(cut, start_structure, min_structure,
                                     target_structure,
-                                    # show=False,
+                                    show=False,
                                     # save_file=base_name
                                     )
             # '''
-            '''
+            # '''
             plot_coordination(cut, start_structure, min_structure,
                               target_structure,
-                              # show=False,
+                              show=False,
                               # save_file=base_name
                               )
             # '''
-            '''
+            # '''
             plot_core_shell_angle(cut, start_structure, min_structure,
                                   target_structure,
-                                  # show=False,
+                                  show=False,
                                   # save_file=base_name
                                   )
-            '''
+            # '''
