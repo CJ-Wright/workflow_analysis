@@ -1,0 +1,40 @@
+language: python
+
+services:
+  - mongodb
+
+python:
+  - 2.7
+#  - 3.4
+
+before_install:
+  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.5.5-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.5.5-Linux-x86_64.sh -O miniconda.sh; fi
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b -p /home/travis/mc
+  - export PATH=/home/travis/mc/bin:$PATH
+  - conda config --add channels soft-matter
+  - export FS_HOST=localhost
+  - export FS_DATABASE=test
+  - mkdir -p /home/travis/.config/filestore
+  - 'echo ''port: 27017'' > /home/travis/.config/filestore/connection.yml'
+
+install:
+  - export GIT_FULL_HASH=`git rev-parse HEAD`
+  - conda update conda --yes
+  - conda create -n testenv --yes pip nose python=$TRAVIS_PYTHON_VERSION pymongo six pyyaml numpy pandas scikit-image h5py matplotlib coverage jsonschema
+  # Dependencies not in official conda have been uploaded to binstar orgs.
+  - conda install -n testenv --yes -c soft-matter pims tifffile
+  - conda install -n testenv --yes -c nikea mongoengine
+  - source activate testenv
+  - pip install coveralls mongoengine boltons ase
+  - 'pip install https://github.com/NSLS-II/filestore/zipball/master#egg=filestore'
+  - pip install -e git+git@github.com:ZhouHUB/pyIID.git@master#egg=pyIID
+  - python setup.py install
+  - pip install coveralls
+
+
+script:
+  - python run_tests.py
+
+after_script:
+  coveralls
