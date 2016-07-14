@@ -14,7 +14,6 @@ from pyiid.calc import wrap_rw
 from pyiid.utils import (tag_surface_atoms,
                          get_angle_list, get_coord_list, get_bond_dist_list
     )
-from pyiid.kernels.cpu_nxn import get_d_array, get_r_array
 from matplotlib.patches import Rectangle
 from decimal import Decimal
 
